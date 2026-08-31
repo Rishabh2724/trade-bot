@@ -7,7 +7,7 @@ from langchain_google_genai import (
 )
 from langchain_core.prompts import ChatPromptTemplate
 from pinecone import Pinecone
-
+from app.services.chat_history import get_messages
 
 load_dotenv()
 
@@ -66,7 +66,7 @@ embeddings = GoogleGenerativeAIEmbeddings(
 # ---------------------------------------
 
 llm = ChatGoogleGenerativeAI(
-    model="gemini-2.5-flash",
+    model="gemini-3.5-flash",
     temperature=0.2,
 )
 
@@ -80,24 +80,31 @@ prompt = ChatPromptTemplate.from_template(
 You are TradeCopilot, an AI trading research assistant.
 
 Your job is to answer questions using the provided
-knowledge-base context.
+knowledge-base context and the conversation history.
 
 IMPORTANT RULES:
 
 1. Use the provided context as your primary source.
-2. Do not invent information that is not supported by
-   the context.
-3. If the context is insufficient, say so clearly.
-4. Do not claim that any trading strategy guarantees
+2. Use conversation history to understand references
+   to previous messages.
+3. Do not invent information that is not supported
+   by the context.
+4. If the context is insufficient, say so clearly.
+5. Do not claim that any trading strategy guarantees
    profits.
-5. Distinguish research findings from your own
+6. Distinguish research findings from your own
    interpretation.
-6. Whenever you make a claim based on a source,
+7. Whenever you make a claim based on a source,
    include its source citation in this format:
 
    [Source: filename, p. X]
 
-7. Keep the answer structured and easy to understand.
+8. Keep the answer structured and easy to understand.
+
+CONVERSATION HISTORY:
+
+{history}
+
 
 KNOWLEDGE BASE:
 
@@ -162,6 +169,7 @@ def retrieve_documents(
 
 def ask_trade_copilot(
     question: str,
+    conversation_id: str | None = None,
 ):
 
     documents = retrieve_documents(question)
@@ -185,7 +193,44 @@ Page: {document['page']}
 
     context = "\n".join(context_parts)
 
+    # ---------------------------------------
+    # Conversation history
+    # ---------------------------------------
+
+    history_parts = []
+
+    if conversation_id:
+
+        messages = get_messages(
+            conversation_id
+        )
+
+        # Exclude the current user message.
+        # It is already provided separately below.
+
+        if messages:
+            messages = messages[:-1]
+
+        for message in messages:
+
+            role = message["role"].upper()
+
+            history_parts.append(
+                f"{role}: {message['content']}"
+            )
+
+    history = "\n\n".join(history_parts)
+
+    if not history:
+
+        history = "No previous conversation."
+
+    # ---------------------------------------
+    # Prompt
+    # ---------------------------------------
+
     formatted_prompt = prompt.format(
+        history=history,
         context=context,
         question=question,
     )
@@ -193,13 +238,20 @@ Page: {document['page']}
     response = llm.invoke(
         formatted_prompt
     )
+    answer = response.content
+
+    if isinstance(answer, list):
+        answer = "\n".join(
+            item.get("text", str(item))
+            if isinstance(item, dict)
+            else str(item)
+            for item in answer
+        )
 
     return {
-        "answer": response.content,
+        "answer": answer,
         "sources": documents,
     }
-
-
 # ---------------------------------------
 # Test
 # ---------------------------------------

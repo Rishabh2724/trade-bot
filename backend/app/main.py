@@ -3,12 +3,14 @@ from fastapi import FastAPI
 from app.routes.chat import router as chat_router
 from app.routes.markets import router as market_router
 from app.routes.analysis import router as analysis_router
+from app.services.chat_history import init_chat_history
 
 app = FastAPI(
     title="TradeCopilot API",
     version="1.0.0",
 )
 
+init_chat_history()
 
 # ---------------------------------------
 # API Routers
