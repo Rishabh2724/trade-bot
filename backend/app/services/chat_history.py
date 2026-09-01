@@ -12,10 +12,18 @@ DB_PATH = BASE_DIR / "chat_history.db"
 
 
 # ---------------------------------------
+# Configuration
+# ---------------------------------------
+
+MAX_HISTORY_MESSAGES = 20
+
+
+# ---------------------------------------
 # Connection
 # ---------------------------------------
 
 def get_connection():
+
     connection = sqlite3.connect(DB_PATH)
 
     connection.row_factory = sqlite3.Row
@@ -142,6 +150,7 @@ def add_message(
 
 def get_messages(
     conversation_id: str,
+    limit: int = MAX_HISTORY_MESSAGES,
 ):
 
     connection = get_connection()
@@ -151,17 +160,27 @@ def get_messages(
         SELECT role, content
         FROM messages
         WHERE conversation_id = ?
-        ORDER BY id ASC
+        ORDER BY id DESC
+        LIMIT ?
         """,
-        (conversation_id,),
+        (
+            conversation_id,
+            limit,
+        ),
     ).fetchall()
 
     connection.close()
 
-    return [
+    messages = [
         {
             "role": row["role"],
             "content": row["content"],
         }
         for row in rows
     ]
+
+    # Database returns newest → oldest.
+    # Reverse so the LLM receives chronological history.
+    messages.reverse()
+
+    return messages

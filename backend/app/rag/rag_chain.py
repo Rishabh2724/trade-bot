@@ -120,6 +120,35 @@ ANSWER:
 """
 )
 
+def build_conversation_history(
+    conversation_id: str,
+) -> str:
+
+    messages = get_messages(
+        conversation_id=conversation_id,
+    )
+
+    # The current user message has already been
+    # stored by the chat route. It is passed separately
+    # to the prompt as {question}.
+    if messages:
+        messages = messages[:-1]
+
+    if not messages:
+        return "No previous conversation."
+
+    history_lines = []
+
+    for message in messages:
+
+        role = message["role"].upper()
+
+        history_lines.append(
+            f"{role}: {message['content']}"
+        )
+
+    return "\n\n".join(history_lines)
+
 
 # ---------------------------------------
 # Retrieval
@@ -172,6 +201,24 @@ def ask_trade_copilot(
     conversation_id: str | None = None,
 ):
 
+    # ---------------------------------------
+    # Conversation history
+    # ---------------------------------------
+
+    if conversation_id:
+
+        history = build_conversation_history(
+            conversation_id
+        )
+
+    else:
+
+        history = "No previous conversation."
+
+    # ---------------------------------------
+    # Retrieval
+    # ---------------------------------------
+
     documents = retrieve_documents(question)
 
     context_parts = []
@@ -194,34 +241,46 @@ Page: {document['page']}
     context = "\n".join(context_parts)
 
     # ---------------------------------------
+    # Prompt
+    # ---------------------------------------
+
+    formatted_prompt = prompt.format(
+        history=history,
+        context=context,
+        question=question,
+    )
+
+    response = llm.invoke(
+        formatted_prompt
+    )
+
+    answer = response.content
+
+    if isinstance(answer, list):
+
+        answer = "\n".join(
+            item.get("text", str(item))
+            if isinstance(item, dict)
+            else str(item)
+            for item in answer
+        )
+
+    return {
+        "answer": answer,
+        "sources": documents,
+    }
+
+    # ---------------------------------------
     # Conversation history
     # ---------------------------------------
 
-    history_parts = []
-
     if conversation_id:
 
-        messages = get_messages(
+        history = build_conversation_history(
             conversation_id
         )
 
-        # Exclude the current user message.
-        # It is already provided separately below.
-
-        if messages:
-            messages = messages[:-1]
-
-        for message in messages:
-
-            role = message["role"].upper()
-
-            history_parts.append(
-                f"{role}: {message['content']}"
-            )
-
-    history = "\n\n".join(history_parts)
-
-    if not history:
+    else:
 
         history = "No previous conversation."
 
