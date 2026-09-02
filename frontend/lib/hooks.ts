@@ -195,6 +195,7 @@ export function usePrices(tickers: string[]): Feed<PriceRow[]> {
     let timer: ReturnType<typeof setTimeout> | undefined;
     let backoff = 1;
     let served = false;
+    let index = 0;
 
     setRows(list.map((ticker) => ({ ticker, price: null, error: null })));
     setLoading(true);
@@ -223,37 +224,26 @@ export function usePrices(tickers: string[]): Feed<PriceRow[]> {
         return;
       }
 
-      let failures = 0;
+      const ticker = list[index % list.length];
+      let failed = false;
 
-      for (const ticker of list) {
+      try {
+        const price = await getPrice(ticker, controller.signal);
         if (cancelled) return;
+        commit(ticker, { price, error: null });
+        setLastUpdated(new Date());
+      } catch (cause) {
+        if (cancelled || isAbort(cause)) return;
 
-        try {
-          const price = await getPrice(ticker, controller.signal);
-          if (cancelled) return;
-          commit(ticker, { price, error: null });
-        } catch (cause) {
-          if (cancelled || isAbort(cause)) return;
-
-          failures += 1;
-          // A per-coin failure only marks its own row. Any price already
-          // fetched stays on screen rather than dropping back to a dash.
-          commit(ticker, { error: message(cause) });
-        }
-
-        await sleep(250);
+        failed = true;
+        commit(ticker, { error: message(cause) });
       }
 
       if (cancelled) return;
 
-      backoff = failures === list.length ? Math.min(backoff * 2, 8) : 1;
-
       served = true;
-
-      // Only stamp a time when something actually arrived. "updated 20:08"
-      // sitting above "Could not reach the API" reads as fresh data.
-      if (failures < list.length) setLastUpdated(new Date());
-
+      index = (index + 1) % list.length;
+      backoff = failed ? Math.min(backoff * 2, 8) : 1;
       setLoading(false);
       schedule(60_000 * backoff);
     }
