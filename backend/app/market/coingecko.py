@@ -32,52 +32,43 @@ async def get_crypto_price(
 ):
     symbol = symbol.upper()
 
-    coin_id = COIN_IDS.get(symbol)
+    if currency.lower() != "usd":
+        raise ValueError(
+            f"Unsupported currency: {currency}. Only usd is supported."
+        )
 
-    if not coin_id:
+    if symbol not in COIN_IDS:
         raise ValueError(
             f"Unsupported cryptocurrency: {symbol}"
         )
 
-    url = f"{BASE_URL}/simple/price"
-
-    params = {
-        "ids": coin_id,
-        "vs_currencies": currency,
-        "include_24hr_change": "true",
-        "include_24hr_vol": "true",
-        "include_market_cap": "true",
-    }
+    pair = f"{symbol}USDT"
+    binance_url = "https://api.binance.com/api/v3/ticker/24hr"
 
     async with httpx.AsyncClient(
         timeout=10,
         trust_env=False,
     ) as client:
-
         response = await client.get(
-            url,
-            params=params,
+            binance_url,
+            params={"symbol": pair},
         )
 
+        if response.status_code == 400:
+            raise ValueError(
+                f"Unsupported cryptocurrency: {symbol}"
+            )
+
         response.raise_for_status()
-
         data = response.json()
-
-    coin_data = data[coin_id]
 
     return {
         "symbol": symbol,
         "currency": currency,
-        "price": coin_data.get(currency),
-        "change_24h": coin_data.get(
-            f"{currency}_24h_change"
-        ),
-        "volume_24h": coin_data.get(
-            f"{currency}_24h_vol"
-        ),
-        "market_cap": coin_data.get(
-            f"{currency}_market_cap"
-        ),
+        "price": float(data.get("lastPrice")),
+        "change_24h": float(data.get("priceChangePercent", 0.0)),
+        "volume_24h": float(data.get("quoteVolume", 0.0)),
+        "market_cap": None,
     }
 
 
