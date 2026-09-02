@@ -60,6 +60,11 @@ def calculate_rsi(
         100 / (1 + rs)
     )
 
+    # A flat stretch makes both averages 0, so rs is 0/0 = NaN and the RSI
+    # comes out NaN. FastAPI would serialize that as bare NaN, which is not
+    # valid JSON and breaks every client. 50 is the neutral convention.
+    rsi = rsi.fillna(50)
+
     return rsi.iloc[-1]
 
 
