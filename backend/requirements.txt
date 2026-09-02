@@ -1,0 +1,16 @@
+fastapi==0.141.1
+httpx==0.28.1
+httpx-sse==0.4.3
+langchain-classic==1.0.8
+langchain-community==0.4.2
+langchain-core==1.6.1
+langchain-google-genai==4.3.7
+langchain-protocol==0.0.19
+langchain-text-splitters==1.1.2
+numpy==2.5.2
+pandas==3.0.5
+pinecone==9.1.0
+pydantic==2.13.5
+pydantic-settings==2.15.0
+python-dotenv==1.2.3
+uvicorn==0.52.4
