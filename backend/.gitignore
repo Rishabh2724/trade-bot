@@ -44,6 +44,11 @@ htmlcov/
 *.log
 logs/
 
+# Local SQLite state (conversation history)
+*.db
+*.sqlite
+*.sqlite3
+
 # --------------------
 # Node.js
 # --------------------
