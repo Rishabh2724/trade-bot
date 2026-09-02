@@ -145,6 +145,47 @@ check("T6 What about its FVG?", "What about its FVG?", "ETHUSDT", "1h")
 
 
 # ------------------------------------------------------------
+# Symbol resolution from a single question (no history)
+# ------------------------------------------------------------
+
+SYMBOL_CASES = [
+    # Tickers
+    ("btc price", "BTCUSDT"),
+    ("What is the price of BTC?", "BTCUSDT"),
+    ("BTCUSDT price", "BTCUSDT"),
+    ("btc price in usd", "BTCUSDT"),
+    ("current price of ETH", "ETHUSDT"),
+    # Full coin names must work the same as tickers.
+    ("bitcoin price", "BTCUSDT"),
+    ("What's the current Bitcoin price?", "BTCUSDT"),
+    ("price of ethereum", "ETHUSDT"),
+    ("solana price", "SOLUSDT"),
+    ("dogecoin trend", "DOGEUSDT"),
+    # Longest alias wins.
+    ("ethereum classic price", "ETCUSDT"),
+    # Tickers that are English words only count when uppercase.
+    ("Explain FVG, BOS, CHoCH etc. in trading", None),
+    ("ETC price", "ETCUSDT"),
+    ("is price near support?", None),
+    ("NEAR price", "NEARUSDT"),
+    # Nothing to resolve.
+    ("what is the price?", None),
+]
+
+print()
+
+for question, expected in SYMBOL_CASES:
+    got = rag_chain.extract_symbol(question)
+    ok = got == expected
+    if not ok:
+        failures += 1
+    print(
+        f"[{'PASS' if ok else 'FAIL'}] extract_symbol({question!r}) "
+        f"-> {got} (want {expected})"
+    )
+
+
+# ------------------------------------------------------------
 # Non-market query should not trigger analysis
 # ------------------------------------------------------------
 
