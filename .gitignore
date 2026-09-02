@@ -1,0 +1,3 @@
+# Claude Code worktrees are isolated checkouts of this same repository.
+# Never track them — doing so would nest the repo inside itself.
+.claude/worktrees/
