@@ -4,6 +4,10 @@ from app.market.coingecko import (
     get_crypto_price,
     get_crypto_market_data,
 )
+from app.schemas.common import (
+    RESPONSE_400,
+    RESPONSE_502,
+)
 
 
 router = APIRouter(
@@ -12,7 +16,14 @@ router = APIRouter(
 )
 
 
-@router.get("/{symbol}/price")
+@router.get(
+    "/{symbol}/price",
+    summary="Current price for a symbol (CoinGecko)",
+    responses={
+        400: RESPONSE_400,
+        502: RESPONSE_502,
+    },
+)
 async def crypto_price(symbol: str):
 
     try:
@@ -36,7 +47,14 @@ async def crypto_price(symbol: str):
         )
 
 
-@router.get("/{symbol}/chart")
+@router.get(
+    "/{symbol}/chart",
+    summary="Historical market chart data (CoinGecko)",
+    responses={
+        400: RESPONSE_400,
+        502: RESPONSE_502,
+    },
+)
 async def crypto_chart(
     symbol: str,
     days: int = 7,
