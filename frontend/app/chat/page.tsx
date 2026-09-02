@@ -1,12 +1,12 @@
 import { Suspense } from "react";
 
-import Dashboard from "@/components/dashboard/Dashboard";
+import Chat from "@/components/Chat";
 
-export default function Home() {
+export default function ChatPage() {
   return (
-    // Dashboard reads useSearchParams for symbol/timeframe.
+    // Chat reads ?q= to accept a question handed over from the dashboard.
     <Suspense fallback={<Loading />}>
-      <Dashboard />
+      <Chat />
     </Suspense>
   );
 }
@@ -14,7 +14,7 @@ export default function Home() {
 function Loading() {
   return (
     <div className="grid h-full place-items-center text-xs text-muted">
-      Loading dashboard…
+      Loading chat…
     </div>
   );
 }

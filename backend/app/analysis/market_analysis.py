@@ -203,7 +203,11 @@ def get_market_analysis(
         min_gap_percent=0.03,
     )
 
-    # Keep the output manageable.
+    # True active count, before any truncation.
+    active_fvg_count = len(active_fvgs)
+
+    # Keep the confluence input manageable. get_active_fvgs returns zones
+    # oldest-first, so this keeps the most recent ones.
     active_fvgs = active_fvgs[-20:]
 
     # ---------------------------------------
@@ -256,8 +260,9 @@ def get_market_analysis(
         "structure": structure,
 
         "fvg": {
-            "active_count": len(active_fvgs),
-            "zones": active_fvgs[:10],
+            "active_count": active_fvg_count,
+            # Most recent zones, not the oldest of the retained window.
+            "zones": active_fvgs[-10:],
         },
 
         "liquidity": liquidity,

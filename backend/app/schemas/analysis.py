@@ -124,10 +124,14 @@ class StructurePivot(BaseModel):
 
 class StructureLayer(BaseModel):
 
+    # "neutral" is a real fourth state: no structure break has happened yet
+    # (or there are no confirmed pivots). It is distinct from "mixed", which
+    # means the swing and internal layers conflict.
     trend: Literal[
         "bullish",
         "bearish",
         "mixed",
+        "neutral",
     ]
 
     latest_event: StructureEvent | None = None

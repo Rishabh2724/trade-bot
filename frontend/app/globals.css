@@ -1,293 +1,79 @@
-:root {
-  --bg: #0b0e11;
-  --panel: #12171d;
-  --panel-2: #1a2129;
-  --border: #232c36;
-  --text: #e6edf3;
-  --muted: #8b97a3;
-  --accent: #26d086;
-  --accent-dim: #1a8f5d;
-  --danger: #ff5c5c;
-  --user-bubble: #1f6feb;
-  --radius: 12px;
-  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
-  --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica,
-    Arial, sans-serif;
+@import "tailwindcss";
+
+/*
+ * The dark trading theme. These land in Tailwind's own namespaces, so
+ * --color-panel becomes bg-panel/text-panel/border-panel, --radius-panel
+ * becomes rounded-panel, and so on.
+ *
+ * Named --color-line rather than --color-border to avoid the awkward
+ * `border-border` utility.
+ */
+@theme {
+  --color-bg: #0b0e11;
+  --color-panel: #12171d;
+  --color-panel-2: #1a2129;
+  --color-line: #232c36;
+  --color-ink: #e6edf3;
+  --color-muted: #8b97a3;
+  --color-accent: #26d086;
+  --color-accent-dim: #1a8f5d;
+  --color-danger: #ff5c5c;
+  --color-user: #1f6feb;
+
+  --radius-panel: 12px;
+
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas,
+    monospace;
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+    Helvetica, Arial, sans-serif;
 }
 
-* {
-  box-sizing: border-box;
-}
-
-html,
-body {
-  margin: 0;
-  padding: 0;
-  height: 100%;
-  background: var(--bg);
-  color: var(--text);
-  font-family: var(--sans);
-  font-size: 15px;
-  line-height: 1.55;
-}
-
-.app {
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
-  max-width: 860px;
-  margin: 0 auto;
-  border-left: 1px solid var(--border);
-  border-right: 1px solid var(--border);
-}
-
-/* Header */
-.header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 14px 20px;
-  border-bottom: 1px solid var(--border);
-  background: var(--panel);
-}
-
-.brand {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-weight: 600;
-  letter-spacing: 0.2px;
-}
-
-.brand .dot {
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-  background: var(--accent);
-  box-shadow: 0 0 10px var(--accent);
-}
-
-.brand .sub {
-  color: var(--muted);
-  font-weight: 400;
-  font-size: 12px;
-}
-
-.reset-btn {
-  background: transparent;
-  color: var(--muted);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 6px 12px;
-  font-size: 13px;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.reset-btn:hover {
-  color: var(--text);
-  border-color: var(--muted);
-}
-
-/* Messages */
-.messages {
-  flex: 1;
-  overflow-y: auto;
-  padding: 24px 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-}
-
-.empty {
-  margin: auto;
-  text-align: center;
-  color: var(--muted);
-  max-width: 460px;
-}
-
-.empty h2 {
-  color: var(--text);
-  font-size: 18px;
-  margin-bottom: 8px;
-}
-
-.examples {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  margin-top: 18px;
-}
-
-.example {
-  background: var(--panel-2);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 10px 14px;
-  color: var(--text);
-  cursor: pointer;
-  text-align: left;
-  font-size: 14px;
-  transition: border-color 0.15s ease;
-}
-
-.example:hover {
-  border-color: var(--accent-dim);
-}
-
-.msg {
-  display: flex;
-  flex-direction: column;
-  max-width: 82%;
-}
-
-.msg.user {
-  align-self: flex-end;
-  align-items: flex-end;
-}
-
-.msg.assistant {
-  align-self: flex-start;
-  align-items: flex-start;
-}
-
-.role {
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.6px;
-  color: var(--muted);
-  margin-bottom: 4px;
-}
-
-.bubble {
-  padding: 12px 15px;
-  border-radius: var(--radius);
-  white-space: pre-wrap;
-  word-break: break-word;
-}
-
-.msg.user .bubble {
-  background: var(--user-bubble);
-  color: #fff;
-  border-bottom-right-radius: 3px;
-}
-
-.msg.assistant .bubble {
-  background: var(--panel-2);
-  border: 1px solid var(--border);
-  border-bottom-left-radius: 3px;
-}
-
-.bubble.pending {
-  color: var(--muted);
-  font-style: italic;
-}
-
-.bubble.error {
-  border-color: var(--danger);
-  color: var(--danger);
-}
-
-/* Sources */
-.sources {
-  margin-top: 8px;
-  width: 100%;
-}
-
-.sources summary {
-  cursor: pointer;
-  color: var(--accent);
-  font-size: 12px;
-  user-select: none;
-}
-
-.source {
-  margin-top: 8px;
-  padding: 10px 12px;
-  background: var(--panel);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  font-size: 13px;
-}
-
-.source .cite {
-  font-family: var(--mono);
-  color: var(--accent);
-  font-size: 12px;
-  margin-bottom: 4px;
-}
-
-.source .snippet {
-  color: var(--muted);
-  max-height: 96px;
-  overflow: hidden;
-}
-
-/* Composer */
-.composer {
-  display: flex;
-  gap: 10px;
-  padding: 14px 20px;
-  border-top: 1px solid var(--border);
-  background: var(--panel);
-}
-
-.composer textarea {
-  flex: 1;
-  resize: none;
-  background: var(--panel-2);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  color: var(--text);
-  padding: 11px 14px;
-  font-family: var(--sans);
-  font-size: 15px;
-  line-height: 1.4;
-  outline: none;
-  max-height: 160px;
-}
-
-.composer textarea:focus {
-  border-color: var(--accent-dim);
-}
-
-.composer button {
-  background: var(--accent);
-  color: #04120b;
-  border: none;
-  border-radius: 10px;
-  padding: 0 20px;
-  font-weight: 600;
-  font-size: 14px;
-  cursor: pointer;
-  transition: background 0.15s ease;
-}
-
-.composer button:hover:not(:disabled) {
-  background: #2ee595;
-}
-
-.composer button:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
-
-/* Small screens */
-@media (max-width: 600px) {
-  .brand .sub {
-    display: none;
+@layer base {
+  html,
+  body {
+    height: 100%;
   }
 
-  .messages {
-    padding: 18px 14px;
+  body {
+    background: var(--color-bg);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
   }
 
-  .header,
-  .composer {
-    padding: 12px 14px;
+  /* Dark scrollbars; the default light ones are jarring on this palette. */
+  * {
+    scrollbar-color: var(--color-line) transparent;
+    scrollbar-width: thin;
   }
 
-  .msg {
-    max-width: 92%;
+  *::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  *::-webkit-scrollbar-thumb {
+    background: var(--color-line);
+    border-radius: 4px;
+  }
+
+  *::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}
+
+@layer components {
+  /*
+   * TradingView's embed script injects its own markup into these two
+   * containers, so they cannot be styled with utility classes on our side.
+   */
+  .tradingview-widget-container {
+    height: 100%;
+    width: 100%;
+  }
+
+  .tradingview-widget-container__widget {
+    height: calc(100% - 32px);
+    width: 100%;
   }
 }
