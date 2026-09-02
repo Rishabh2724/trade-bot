@@ -1,3 +1,4 @@
+import logging
 import os
 
 from fastapi import FastAPI
@@ -7,6 +8,17 @@ from app.routes.chat import router as chat_router
 from app.routes.markets import router as market_router
 from app.routes.analysis import router as analysis_router
 from app.services.chat_history import init_chat_history
+
+# ---------------------------------------
+# Logging
+# ---------------------------------------
+# uvicorn only configures its own loggers, so application logs need a
+# root handler to be visible. Override the level with LOG_LEVEL.
+
+logging.basicConfig(
+    level=os.getenv("LOG_LEVEL", "INFO"),
+    format="%(asctime)s %(levelname)s %(name)s: %(message)s",
+)
 
 app = FastAPI(
     title="TradeCopilot API",

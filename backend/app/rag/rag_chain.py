@@ -1,3 +1,4 @@
+import logging
 import os
 import re
 
@@ -14,6 +15,9 @@ from app.services.analysis_service import analyze_market
 
 
 load_dotenv()
+
+
+logger = logging.getLogger(__name__)
 
 
 # ============================================================
@@ -346,6 +350,61 @@ COMMON_SYMBOLS = {
     "OP",
 }
 
+# Tickers that are also ordinary English words. These are only accepted
+# when written in uppercase, so "explain FVG, BOS etc." does not resolve
+# to ETCUSDT while "ETC" still does.
+AMBIGUOUS_TICKERS = {
+    "ETC",
+    "OP",
+    "NEAR",
+    "DOT",
+    "LINK",
+    "UNI",
+    "ATOM",
+    "APT",
+    "ARB",
+    "FIL",
+}
+
+# Full coin names, so "bitcoin price" resolves the same as "BTC price".
+# Longer names must be tried first ("ethereum classic" before "ethereum").
+COIN_NAME_ALIASES = {
+    "bitcoin": "BTC",
+    "ethereum classic": "ETC",
+    "ethereum": "ETH",
+    "solana": "SOL",
+    "binance coin": "BNB",
+    "ripple": "XRP",
+    "cardano": "ADA",
+    "dogecoin": "DOGE",
+    "avalanche": "AVAX",
+    "polkadot": "DOT",
+    "chainlink": "LINK",
+    "litecoin": "LTC",
+    "tron": "TRX",
+    "shiba inu": "SHIB",
+    "cosmos": "ATOM",
+    "uniswap": "UNI",
+    "filecoin": "FIL",
+    "aptos": "APT",
+    "arbitrum": "ARB",
+    "optimism": "OP",
+}
+
+ALIAS_PATTERN = re.compile(
+    r"\b("
+    + "|".join(
+        re.escape(name)
+        for name in sorted(
+            COIN_NAME_ALIASES,
+            key=len,
+            reverse=True,
+        )
+    )
+    + r")\b",
+    re.IGNORECASE,
+)
+
 # Explicit trading pair, e.g. BTCUSDT, BTC/USDT, BTC-USDT, BTC USDT.
 PAIR_PATTERN = re.compile(
     r"\b([A-Z]{2,10})\s*(?:/|-|\s)?\s*(USDT|USD)\b"
@@ -375,16 +434,39 @@ def _symbol_candidates(text: str) -> list[tuple[int, str]]:
 
     for match in WORD_PATTERN.finditer(text):
 
-        symbol = match.group(0).upper()
+        word = match.group(0)
+        symbol = word.upper()
 
-        if symbol in COMMON_SYMBOLS:
-            candidates.append(
-                (match.start(), f"{symbol}USDT")
-            )
+        if symbol not in COMMON_SYMBOLS:
+            continue
+
+        # Require uppercase for tickers that double as English words.
+        if symbol in AMBIGUOUS_TICKERS and word != symbol:
+            continue
+
+        candidates.append(
+            (match.start(), f"{symbol}USDT")
+        )
+
+    for match in ALIAS_PATTERN.finditer(text):
+
+        ticker = COIN_NAME_ALIASES[match.group(1).lower()]
+
+        candidates.append(
+            (match.start(), f"{ticker}USDT")
+        )
 
     candidates.sort(key=lambda item: item[0])
 
-    return candidates
+    # A single mention can produce duplicate candidates (e.g. an alias
+    # that is also a ticker). Collapse consecutive repeats.
+    deduped: list[tuple[int, str]] = []
+
+    for candidate in candidates:
+        if not deduped or deduped[-1][1] != candidate[1]:
+            deduped.append(candidate)
+
+    return deduped
 
 
 def extract_symbol(question: str) -> str | None:
@@ -456,6 +538,10 @@ def build_live_market_context(
 ) -> str:
 
     if not is_market_query(question):
+        logger.info(
+            "live market analysis skipped: not a market query (%r)",
+            question,
+        )
         return "No live market analysis requested."
 
     # Prefer an explicit symbol/timeframe in the current question.
@@ -464,15 +550,28 @@ def build_live_market_context(
     symbol = extract_symbol(question) or extract_symbol_from_history(history)
 
     if not symbol:
+        logger.info(
+            "live market analysis skipped: no symbol resolved (%r)",
+            question,
+        )
         return (
-            "Live market analysis was not requested with a "
-            "specific cryptocurrency symbol."
+            "LIVE MARKET ANALYSIS NOT RUN: no trading symbol could be "
+            "identified in the question or the conversation history.\n"
+            "Ask the user which symbol they want analyzed (for example "
+            "BTCUSDT or ETHUSDT). Do not state that market data is "
+            "unavailable — no symbol was requested yet."
         )
 
     timeframe = (
         extract_timeframe(question)
         or extract_timeframe_from_history(history)
         or "15m"
+    )
+
+    logger.info(
+        "live market analysis: symbol=%s timeframe=%s",
+        symbol,
+        timeframe,
     )
 
     try:
@@ -484,6 +583,13 @@ def build_live_market_context(
         )
 
     except Exception as error:
+
+        logger.warning(
+            "live market analysis failed for %s %s: %s",
+            symbol,
+            timeframe,
+            error,
+        )
 
         return (
             "LIVE MARKET ANALYSIS UNAVAILABLE.\n"
