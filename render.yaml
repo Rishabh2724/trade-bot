@@ -14,6 +14,6 @@ services:
       - key: PINECONE_INDEX_NAME
         value: trade-copilot
       - key: FRONTEND_ORIGINS
-        value: https://your-frontend-url.vercel.app
+        value: https://trade-bot-ruddy.vercel.app
       - key: LOG_LEVEL
         value: INFO
