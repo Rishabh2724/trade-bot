@@ -1,12 +1,22 @@
 from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
 
 from app.rag.rag_chain import ask_trade_copilot
+from app.schemas.chat import (
+    ChatRequest,
+    ChatResponse,
+    ConversationHistoryResponse,
+)
+from app.schemas.common import (
+    RESPONSE_400,
+    RESPONSE_404,
+    RESPONSE_500,
+    RESPONSE_502,
+)
 from app.services.chat_history import (
     create_conversation,
     conversation_exists,
     add_message,
-    get_messages,
+    get_all_messages,
 )
 
 
@@ -17,22 +27,21 @@ router = APIRouter(
 
 
 # ---------------------------------------
-# Request
-# ---------------------------------------
-
-class ChatRequest(BaseModel):
-
-    message: str
-
-    conversation_id: str | None = None
-
-
-# ---------------------------------------
 # Chat
 # ---------------------------------------
 
-@router.post("/chat")
-def chat(request: ChatRequest):
+@router.post(
+    "/chat",
+    response_model=ChatResponse,
+    summary="Send a message to the trading copilot",
+    responses={
+        400: RESPONSE_400,
+        404: RESPONSE_404,
+        502: RESPONSE_502,
+        500: RESPONSE_500,
+    },
+)
+def chat(request: ChatRequest) -> ChatResponse:
 
     try:
 
@@ -86,11 +95,11 @@ def chat(request: ChatRequest):
         # Response
         # ---------------------------------------
 
-        return {
-            "conversation_id": conversation_id,
-            "answer": result["answer"],
-            "sources": result["sources"],
-        }
+        return ChatResponse(
+            conversation_id=conversation_id,
+            answer=result["answer"],
+            sources=result["sources"],
+        )
 
     except HTTPException:
         raise
@@ -118,11 +127,21 @@ def chat(request: ChatRequest):
 
 
 # ---------------------------------------
-# Get conversation history
+# Get full conversation history
 # ---------------------------------------
 
-@router.get("/chat/{conversation_id}")
-def get_chat_history(conversation_id: str):
+@router.get(
+    "/chat/{conversation_id}/history",
+    response_model=ConversationHistoryResponse,
+    summary="Get the full stored conversation",
+    responses={
+        404: RESPONSE_404,
+        500: RESPONSE_500,
+    },
+)
+def get_chat_history(
+    conversation_id: str,
+) -> ConversationHistoryResponse:
 
     try:
 
@@ -133,14 +152,14 @@ def get_chat_history(conversation_id: str):
                 detail="Conversation not found",
             )
 
-        messages = get_messages(
-            conversation_id
-        )
+        # Full conversation, not the LLM-capped window.
+        messages = get_all_messages(conversation_id)
 
-        return {
-            "conversation_id": conversation_id,
-            "messages": messages,
-        }
+        return ConversationHistoryResponse(
+            conversation_id=conversation_id,
+            message_count=len(messages),
+            messages=messages,
+        )
 
     except HTTPException:
         raise

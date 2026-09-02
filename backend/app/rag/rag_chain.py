@@ -258,6 +258,9 @@ def retrieve_documents(
 # ============================================================
 
 MARKET_KEYWORDS = {
+    "analyze",
+    "analyse",
+    "analysis",
     "price",
     "trend",
     "rsi",
@@ -318,93 +321,129 @@ def is_market_query(question: str) -> bool:
 # Symbol Extraction
 # ============================================================
 
+# Common crypto tickers recognised without an explicit quote.
+COMMON_SYMBOLS = {
+    "BTC",
+    "ETH",
+    "SOL",
+    "BNB",
+    "XRP",
+    "ADA",
+    "DOGE",
+    "AVAX",
+    "DOT",
+    "LINK",
+    "LTC",
+    "TRX",
+    "SHIB",
+    "ATOM",
+    "UNI",
+    "ETC",
+    "FIL",
+    "NEAR",
+    "APT",
+    "ARB",
+    "OP",
+}
+
+# Explicit trading pair, e.g. BTCUSDT, BTC/USDT, BTC-USDT, BTC USDT.
+PAIR_PATTERN = re.compile(
+    r"\b([A-Z]{2,10})\s*(?:/|-|\s)?\s*(USDT|USD)\b"
+)
+
+# Bare word candidates matched against COMMON_SYMBOLS.
+WORD_PATTERN = re.compile(r"\b[A-Za-z]{2,10}\b")
+
+
+def _symbol_candidates(text: str) -> list[tuple[int, str]]:
+
+    # Every symbol mention in text as (position, normalized_symbol),
+    # sorted by position so callers can pick the first or last one.
+
+    candidates: list[tuple[int, str]] = []
+
+    upper = text.upper()
+
+    for match in PAIR_PATTERN.finditer(upper):
+
+        base = match.group(1)
+        quote = match.group(2)
+
+        candidates.append(
+            (match.start(), f"{base}{quote}")
+        )
+
+    for match in WORD_PATTERN.finditer(text):
+
+        symbol = match.group(0).upper()
+
+        if symbol in COMMON_SYMBOLS:
+            candidates.append(
+                (match.start(), f"{symbol}USDT")
+            )
+
+    candidates.sort(key=lambda item: item[0])
+
+    return candidates
+
+
 def extract_symbol(question: str) -> str | None:
 
-    # Examples:
-    # BTCUSDT
-    # BTC/USDT
-    # BTC-USDT
-    # BTC USDT
+    # The current question usually mentions one symbol; take the
+    # first mention.
+    candidates = _symbol_candidates(question)
 
-    pair_match = re.search(
-        r"\b([A-Z]{2,10})\s*(?:/|-|\s)?\s*(USDT|USD)\b",
-        question.upper(),
-    )
+    return candidates[0][1] if candidates else None
 
-    if pair_match:
 
-        base = pair_match.group(1)
-        quote = pair_match.group(2)
+def extract_symbol_from_history(history: str) -> str | None:
 
-        return f"{base}{quote}"
+    # Conversation history may mention several symbols over time.
+    # The most recent mention is the current conversational context.
+    candidates = _symbol_candidates(history)
 
-    # Common crypto tickers.
-    common_symbols = {
-        "BTC",
-        "ETH",
-        "SOL",
-        "BNB",
-        "XRP",
-        "ADA",
-        "DOGE",
-        "AVAX",
-        "DOT",
-        "LINK",
-        "LTC",
-        "TRX",
-        "SHIB",
-        "ATOM",
-        "UNI",
-        "ETC",
-        "FIL",
-        "NEAR",
-        "APT",
-        "ARB",
-        "OP",
-    }
-
-    words = re.findall(
-        r"\b[A-Za-z]{2,10}\b",
-        question,
-    )
-
-    for word in words:
-
-        symbol = word.upper()
-
-        if symbol in common_symbols:
-            return f"{symbol}USDT"
-
-    return None
+    return candidates[-1][1] if candidates else None
 
 
 # ============================================================
 # Timeframe Extraction
 # ============================================================
 
-def extract_timeframe(question: str) -> str:
+# Keep the match case-sensitive because:
+#
+# 1m = one minute
+# 1M = one month
+#
+# The analysis pipeline uses Binance-style intraday/day/week
+# intervals.
+TIMEFRAME_PATTERN = re.compile(
+    r"\b(1m|3m|5m|15m|30m|1h|2h|4h|6h|8h|12h|1d|3d|1w)\b"
+)
 
-    # Keep the match case-sensitive because:
-    #
-    # 1m = one minute
-    # 1M = one month
-    #
-    # The analysis pipeline currently uses Binance-style
-    # intraday/day/week intervals.
 
-    timeframe_match = re.search(
-        r"\b(1m|3m|5m|15m|30m|1h|2h|4h|6h|8h|12h|1d|3d|1w)\b",
-        question,
-    )
+def _timeframe_matches(text: str) -> list[str]:
 
-    if timeframe_match:
+    return [
+        match.group(1)
+        for match in TIMEFRAME_PATTERN.finditer(text)
+        if match.group(1) in SUPPORTED_TIMEFRAMES
+    ]
 
-        timeframe = timeframe_match.group(1)
 
-        if timeframe in SUPPORTED_TIMEFRAMES:
-            return timeframe
+def extract_timeframe(question: str) -> str | None:
 
-    return "15m"
+    # Returns None (not a default) when the question does not name a
+    # timeframe, so callers can fall back to conversation history.
+    matches = _timeframe_matches(question)
+
+    return matches[0] if matches else None
+
+
+def extract_timeframe_from_history(history: str) -> str | None:
+
+    matches = _timeframe_matches(history)
+
+    return matches[-1] if matches else None
 
 
 # ============================================================
@@ -413,12 +452,16 @@ def extract_timeframe(question: str) -> str:
 
 def build_live_market_context(
     question: str,
+    history: str = "",
 ) -> str:
 
     if not is_market_query(question):
         return "No live market analysis requested."
 
-    symbol = extract_symbol(question)
+    # Prefer an explicit symbol/timeframe in the current question.
+    # Otherwise inherit the most recent one from conversation history
+    # so follow-ups ("what about the FVG?") stay on the same market.
+    symbol = extract_symbol(question) or extract_symbol_from_history(history)
 
     if not symbol:
         return (
@@ -426,7 +469,11 @@ def build_live_market_context(
             "specific cryptocurrency symbol."
         )
 
-    timeframe = extract_timeframe(question)
+    timeframe = (
+        extract_timeframe(question)
+        or extract_timeframe_from_history(history)
+        or "15m"
+    )
 
     try:
 
@@ -789,7 +836,8 @@ Page: {document['page']}
     # --------------------------------------------------------
 
     live_analysis = build_live_market_context(
-        question
+        question,
+        history,
     )
 
     # --------------------------------------------------------

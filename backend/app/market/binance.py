@@ -30,6 +30,28 @@ def get_ohlcv(
             timeout=10,
         )
 
+    except requests.RequestException as error:
+        raise RuntimeError(
+            f"Binance market data request failed: {error}"
+        ) from error
+
+    # Binance returns HTTP 400 with a coded body for bad input
+    # (e.g. -1121 "Invalid symbol", -1120 "Invalid interval").
+    # Surface these as ValueError so the API layer maps them to 400
+    # instead of treating them as an upstream (502) failure.
+    if response.status_code == 400:
+        try:
+            error_body = response.json()
+        except ValueError:
+            error_body = {}
+
+        message = error_body.get("msg", "Invalid request")
+
+        raise ValueError(
+            f"{message} (symbol={symbol}, interval={interval})"
+        )
+
+    try:
         response.raise_for_status()
 
     except requests.RequestException as error:

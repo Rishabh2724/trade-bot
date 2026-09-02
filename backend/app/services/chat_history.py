@@ -184,3 +184,35 @@ def get_messages(
     messages.reverse()
 
     return messages
+
+
+def get_all_messages(
+    conversation_id: str,
+) -> list[dict]:
+
+    # Full conversation, chronological, including timestamps.
+    # Used by the conversation-history API (not the LLM context,
+    # which is capped by get_messages()).
+
+    connection = get_connection()
+
+    rows = connection.execute(
+        """
+        SELECT role, content, created_at
+        FROM messages
+        WHERE conversation_id = ?
+        ORDER BY id ASC
+        """,
+        (conversation_id,),
+    ).fetchall()
+
+    connection.close()
+
+    return [
+        {
+            "role": row["role"],
+            "content": row["content"],
+            "created_at": row["created_at"],
+        }
+        for row in rows
+    ]
