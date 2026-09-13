@@ -68,6 +68,58 @@ def calculate_rsi(
     return rsi.iloc[-1]
 
 
+
+def calculate_atr(
+    df: pd.DataFrame,
+    period: int = 14,
+) -> pd.Series:
+    """
+    Calculate Average True Range (ATR).
+
+    Uses Wilder's smoothing through pandas' EWM.
+
+    ATR is used for:
+    - displacement detection
+    - volatility normalization
+    - stop-loss buffers
+    """
+
+    required = {"high", "low", "close"}
+
+    missing = required - set(df.columns)
+
+    if missing:
+        raise ValueError(
+            f"Missing columns: {missing}"
+        )
+
+    high = df["high"].astype(float)
+    low = df["low"].astype(float)
+    close = df["close"].astype(float)
+
+    previous_close = close.shift(1)
+
+    true_range = pd.concat(
+        [
+            high - low,
+            (high - previous_close).abs(),
+            (low - previous_close).abs(),
+        ],
+        axis=1,
+    ).max(axis=1)
+
+    atr = (
+        true_range
+        .ewm(
+            alpha=1 / period,
+            adjust=False,
+            min_periods=period,
+        )
+        .mean()
+    )
+
+    return atr
+
 def analyze_prices(
     prices: list[float],
 ):

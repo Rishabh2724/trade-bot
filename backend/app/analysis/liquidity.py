@@ -86,6 +86,7 @@ def _cluster_levels(
     return liquidity
 
 
+
 def detect_liquidity(
     df: pd.DataFrame,
     swing_length: int = 5,
@@ -223,3 +224,142 @@ def detect_liquidity(
         "buy_side_liquidity": buy_side_liquidity,
         "sell_side_liquidity": sell_side_liquidity,
     }
+def detect_liquidity_sweeps(
+    df: pd.DataFrame,
+    liquidity: dict,
+    reclaim_required: bool = True,
+) -> list[dict]:
+    """
+    Detect price sweeping known liquidity levels.
+
+    Sell-side liquidity sweep:
+
+        candle low < liquidity level
+        AND
+        candle closes back above liquidity level
+
+    Buy-side liquidity sweep:
+
+        candle high > liquidity level
+        AND
+        candle closes back below liquidity level
+
+    Important:
+    liquidity levels must be generated using data
+    available before the sweep candle when used
+    inside a backtest.
+    """
+
+    required = {
+        "timestamp",
+        "high",
+        "low",
+        "close",
+    }
+
+    missing = required - set(df.columns)
+
+    if missing:
+        raise ValueError(
+            f"Missing columns: {missing}"
+        )
+
+    buy_side = liquidity.get(
+        "buy_side_liquidity",
+        [],
+    )
+
+    sell_side = liquidity.get(
+        "sell_side_liquidity",
+        [],
+    )
+
+    sweeps = []
+
+    for i in range(len(df)):
+
+        candle = df.iloc[i]
+
+        high = float(candle["high"])
+        low = float(candle["low"])
+        close = float(candle["close"])
+
+        # =====================================
+        # SELL-SIDE LIQUIDITY
+        # =====================================
+
+        for level in sell_side:
+
+            liquidity_price = float(
+                level["price"]
+            )
+
+            if low >= liquidity_price:
+                continue
+
+            reclaimed = (
+                close > liquidity_price
+            )
+
+            if reclaim_required and not reclaimed:
+                continue
+
+            sweeps.append(
+                {
+                    "index": i,
+                    "timestamp": str(
+                        candle["timestamp"]
+                    ),
+                    "type": "sell_side_sweep",
+                    "direction": "bullish",
+                    "liquidity_price": (
+                        liquidity_price
+                    ),
+                    "sweep_price": low,
+                    "reclaimed": reclaimed,
+                    "liquidity": level,
+                }
+            )
+
+        # =====================================
+        # BUY-SIDE LIQUIDITY
+        # =====================================
+
+        for level in buy_side:
+
+            liquidity_price = float(
+                level["price"]
+            )
+
+            if high <= liquidity_price:
+                continue
+
+            reclaimed = (
+                close < liquidity_price
+            )
+
+            if reclaim_required and not reclaimed:
+                continue
+
+            sweeps.append(
+                {
+                    "index": i,
+                    "timestamp": str(
+                        candle["timestamp"]
+                    ),
+                    "type": "buy_side_sweep",
+                    "direction": "bearish",
+                    "liquidity_price": (
+                        liquidity_price
+                    ),
+                    "sweep_price": high,
+                    "reclaimed": reclaimed,
+                    "liquidity": level,
+                }
+            )
+
+    sweeps.sort(
+        key=lambda x: x["index"]
+    )
+
+    return sweeps

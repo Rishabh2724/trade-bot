@@ -200,4 +200,6 @@ else:
 
 print()
 print("RESULT:", "ALL PASS" if failures == 0 else f"{failures} FAILURE(S)")
-sys.exit(1 if failures else 0)
+
+if __name__ == "__main__":
+    sys.exit(1 if failures else 0)

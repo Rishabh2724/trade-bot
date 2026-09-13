@@ -191,4 +191,6 @@ print(
     if not failures
     else f"RESULT: {len(failures)} FAILURE(S) -> {failures}"
 )
-sys.exit(1 if failures else 0)
+
+if __name__ == "__main__":
+    sys.exit(1 if failures else 0)
