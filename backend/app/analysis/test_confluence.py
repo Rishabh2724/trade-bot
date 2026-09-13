@@ -31,9 +31,7 @@ structure = analyze_structure(
     internal_length=5,
 )
 
-fvg = {
-    "active": get_active_fvgs(df),
-}
+fvg = get_active_fvgs(df)
 
 liquidity = analyze_liquidity(df)
 
